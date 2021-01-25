@@ -8,6 +8,7 @@
 #'        toc: FALSE
 #'        includes:
 #'            in_header: preamble.tex
+#' bibliography: main/references.bib
 #' ---
 
 #+ include=FALSE
@@ -54,6 +55,41 @@ pvalues <- read_csv(here("results/pvalues.csv")) %>%
 pvalues_sample <- read_csv(here("results/pvalues_sample.csv")) %>% 
   rename(de_tool = analysis_platform)
 sequencing_metadata <- read_csv(here("results/sequencing_metadata_unique_platform.csv"))
+de_simulation_results <- read_csv(here("results/data/de_simulation_results.csv"))
+
+
+#+ fig2supp1
+qc_threshold <- function(n_pvals, bins, fdr) {
+  qbinom(1 - 1 / bins * fdr, n_pvals, 1 / bins)
+}
+
+qc_thr <- qc_threshold(n_pvals = 20000, bins = 40, fdr = 0.05)
+
+p <- de_simulation_results %>% 
+  mutate(
+    reps = factor(reps, levels = c("N=3", "N=6", "N=10")),
+    n_eff = factor(n_eff, levels = c("Effects=100", "Effects=200", "Effects=400", "Effects=800"))
+  ) %>% 
+  ggplot() +
+  geom_histogram(aes(pvalue), binwidth = 1/40, center = 1/80) +
+  geom_hline(yintercept = qc_thr, color = "red") +
+  facet_grid(reps~n_eff) +
+  scale_x_continuous(breaks = c(0, 0.5, 1))
+ggsave(here("figures/figure_2_figure_supplement_1.tiff"), plot = p, width = 12, height = 8, units = "cm", dpi = 300)
+
+fig_cap <- glue("Simulated RNA-seq data shows that histograms from p value sets with around one hundred 
+                 true effects out of 20,000 features can be classified as 'uniform'.
+                RNA-seq data was simulated with polyester R package [@frazee2015] on 20,000 transcripts from human transcriptome 
+                 using grid of 3, 6, and 10 replicates and 100, 200, 400, and 800 effects for two groups. 
+                 Fold changes were set to 0.5 and 2.
+                Differential expression was assessed using DESeq2 R package [@love2014] using default settings 
+                and group 1 versus group 2 contrast. 
+                Effects denotes in facet labels the number of true effects and N denotes number of replicates.
+                Red line denotes QC threshold used for dividing p histograms into discrete classes.
+                Workflow and code used to run this simulation is available on Github: https://github.com/rstats-tartu/simulate-rnaseq.")
+
+#+ fig.cap=fig_cap
+p
 
 #+ FigS1
 f <- anticons ~ year
@@ -75,7 +111,7 @@ p <- plot(conditional_effects(mod,
 
 fig_cap <- glue("The increasing proportion of anti-conservative histograms. 
                 Binomial logistic model: *{deparse(f)}*, N = {summary(mod)$nobs}. 
-                Shaded area, 95% highest density interval (HDI).")
+                Lines denote best fit of linear model. Shaded area denotes 95% credible region.")
 
 #+ fig.cap=fig_cap 
 p$year + 
@@ -83,7 +119,7 @@ p$year +
   scale_x_continuous(breaks = seq(2010, 2019, by = 3)) +
   labs(y = "Proportion of anti-conservative\np value histograms",
        x = "Year")
-ggsave(here("figures/figure_S1.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_1.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
 
 #' 
 #+ FigS2
@@ -107,7 +143,8 @@ p <- plot(conditional_effects(mod,
 
 fig_cap <- glue("A 2-level binomial logistic model *{deparse(f)}* 
                 reveals that all differential expression analysis tools are associated with 
-                temporally increasing anti-conservative p value histograms, N = {summary(mod)$nobs}. Shaded area, 95% HDI.")
+                temporally increasing anti-conservative p value histograms, N = {summary(mod)$nobs}. 
+                Lines denote best fit of linear model. Shaded area denotes 95% credible region.")
 
 #+fig.cap=fig_cap
 p$year + 
@@ -117,7 +154,7 @@ p$year +
        x = "Year") +
   facet_wrap(~ de_tool) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(here("figures/figure_S2.tiff"), height = 12, width = 18, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_2.tiff"), height = 12, width = 18, dpi = 300, units = "cm")
 
 #' 
 #+ FigS3
@@ -143,7 +180,7 @@ p <- plot(conditional_effects(mod,
 
 fig_cap <- glue("A 2-level binomial logistic model *{deparse(f)}* reveals that all sequencing instrument models 
 are associated with temporally increasing anti-conservative p value histograms, N = {summary(mod)$nobs}. Only GEO submissions utilizing 
-single sequencing platform were used for model fitting. Shaded area, 95% HDI.")
+single sequencing platform were used for model fitting. Lines denote best fit of linear model. Shaded area denotes 95% credible region.")
 
 #+ fig.height=8, fig.cap=fig_cap
 p$year + 
@@ -153,7 +190,7 @@ p$year +
        x = "Year") +
   facet_wrap(~ model, labeller = label_wrap_gen(width = 18)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(here("figures/figure_S3.tiff"), height = 23, width = 18, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_3.tiff"), height = 23, width = 18, dpi = 300, units = "cm")
 
 #'
 #+ FigS4
@@ -169,13 +206,13 @@ p <- data %>%
   theme(legend.title = element_blank(),
         legend.position = c(0.7, 0.8))
 
-fig_cap <- glue("No single data analysis platform dominates the field. 
+fig_cap <- glue("No single differential expression analysis tool dominates the field. 
                 Y-axis shows the proportion of analysis platforms, 
                 x-axis shows publication year of GEO submission, N = {sum(p$data$n)}.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S4.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_4.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
 
 #+ FigS5a
 y_title <- "Prop. anti-cons."
@@ -323,7 +360,7 @@ fig_cap <- glue("Binomial logistic models for proportion of anti-conservative p 
                 C, model conditioned on year of GEO submission: *{pcF}*, N = {pcN}. 
                 D, model conditioned on studied organism (human/mouse/other): *{pdF}*, N = {pdN}. 
                 E, varying intercept model *{peF}* where 'model' stands for sequencing instrument model, N = {peN}. 
-                F, varying intercept and slope model *{pfF}*, N = {pfN}. Error bars, 95% HDI.")
+                F, varying intercept and slope model *{pfF}*, N = {pfN}. Points denote best fit of linear model. Error bars, 95% credible interval.")
 
 for (p in list(pa, pb, pc, pd, pe, pf)) {
   p$layers[[1]]$aes_params$size <- 1
@@ -334,7 +371,7 @@ for (p in list(pa, pb, pc, pd, pe, pf)) {
   plot_annotation(tag_levels = "A") & 
   theme(plot.tag.position = c(0, 1),
         plot.tag = element_text(size = 10, hjust = 0, vjust = 0))
-ggsave(here("figures/figure_S5.tiff"), height = 14, width = 18, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_5.tiff"), height = 14, width = 18, dpi = 300, units = "cm")
 
 #' 
 #+ FigS6a
@@ -354,7 +391,7 @@ p <- plot(conditional_effects(mod,
           plot = FALSE)
 pa <- p$de_tool + 
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-  labs(y = expression(pi * 0)) +
+  labs(y = expression(pi[0])) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 paN <- summary(mod)$nobs
@@ -377,7 +414,7 @@ p <- plot(conditional_effects(mod,
           plot = FALSE)
 pb <- p$de_tool + 
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-  labs(y = expression(pi * 0)) +
+  labs(y = expression(pi[0])) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 pbN <- summary(mod)$nobs
@@ -405,7 +442,7 @@ p <- plot(conditional_effects(mod,
           plot = FALSE)
 pc <- p$de_tool + 
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-  labs(y = expression(pi * 0)) +
+  labs(y = expression(pi[0])) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 pcN <- summary(mod)$nobs
@@ -428,7 +465,7 @@ p <- plot(conditional_effects(mod,
           plot = FALSE)
 pd <- p$de_tool + 
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-  labs(y = expression(pi * 0)) +
+  labs(y = expression(pi[0])) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 pdN <- summary(mod)$nobs
@@ -451,7 +488,7 @@ p <- plot(conditional_effects(mod,
           plot = FALSE)
 pe <- p$de_tool + 
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
-  labs(y = expression(pi * 0)) +
+  labs(y = expression(pi[0])) +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 peN <- summary(mod)$nobs
@@ -464,16 +501,16 @@ p <- (pa + pb + pc) / (pd + pe + plot_spacer()) +
   plot_annotation(tag_levels = "A") & 
   theme(plot.tag.position = c(0, 1),
         plot.tag = element_text(size = 10, hjust = 0, vjust = 0))
-fig_cap <- glue("Robust (student-t likelihood) modeling of pi0. 
+fig_cap <- glue("Robust (student's t likelihood) modeling of $\\pi_0$. 
                 A, simple model *{paF}* fitted on complete data, N = {paN}. 
                 B, model conditioned on year of GEO submission: *{pbF}*, N = {pbN}. 
                 C, model conditioned on studied organism (human/mouse/other): *{pcF}*, N = {pcN}. 
                 D, varying intercept model *{pdF}* where 'model' stands for sequencing instrument model, N = {pdN}. 
-                E, varying intercept/slope model *{peF}*, N = {peN}. Error bars, 95% HDI.")
+                E, varying intercept/slope model *{peF}*, N = {peN}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S6.tiff"), height = 14, width = 18, dpi = 300, units = "cm")
+ggsave(here("figures/figure_4_figure_supplement_1.tiff"), height = 14, width = 18, dpi = 300, units = "cm")
 
 #' 
 #+ FigS7
@@ -494,16 +531,16 @@ p <- mod %>%
   median_hdci(condition_mean = b_Intercept + r_model) %>%
   ggplot(aes(y = condition, x = condition_mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval() +
-  labs(x = expression(pi * 0)) +
+  labs(x = expression(pi[0])) +
   scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
   theme(axis.title.y = element_blank())
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of pi0 on sequencing instrument model: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of $\\pi_0$ on sequencing instrument model: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S7.tiff"), height = 12, width = 18, dpi = 300, units = "cm")
+ggsave(here("figures/figure_4_figure_supplement_2.tiff"), height = 12, width = 18, dpi = 300, units = "cm")
 
 #' 
 #+ FigS8
@@ -522,15 +559,15 @@ p <- mod %>%
   median_hdci(condition_mean = b_Intercept + r_library_strategy) %>%
   ggplot(aes(y = condition, x = condition_mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval() +
-  labs(x = expression(pi * 0), y = "Library strategy") +
+  labs(x = expression(pi[0]), y = "Library strategy") +
   scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2))
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of pi0 on library strategy: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of $\\pi_0$ on library strategy: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S8.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_4_figure_supplement_3.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
 
 #' 
 #+ FigS9
@@ -549,15 +586,15 @@ p <- mod %>%
   median_hdci(condition_mean = b_Intercept + r_library_selection) %>%
   ggplot(aes(y = condition, x = condition_mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval() +
-  labs(x = expression(pi * 0), y = "Library selection") +
+  labs(x = expression(pi[0]), y = "Library selection") +
   scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2))
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of pi0 on library selection: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of $\\pi_0$ on library selection: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S9.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_4_figure_supplement_4.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
 
 #' 
 #+  FigS10
@@ -576,15 +613,15 @@ p <- mod %>%
   median_hdci(condition_mean = b_Intercept + r_library_layout) %>%
   ggplot(aes(y = condition, x = condition_mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval() +
-  labs(x = expression(pi * 0), y = "Library layout") +
+  labs(x = expression(pi[0]), y = "Library layout") +
   scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2))
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of pi0 on library layout: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of $\\pi_0$ on library layout: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S10.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_4_figure_supplement_5.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
 
 #' 
 #+ FigS11
@@ -612,11 +649,11 @@ p <- mod %>%
   theme(axis.title.y = element_blank())
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on sequencing platform: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on sequencing platform: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S11.tiff"), height = 12, width = 18, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_6.tiff"), height = 12, width = 18, dpi = 300, units = "cm")
 
 #' 
 #+ FigS12
@@ -640,11 +677,11 @@ p <- mod %>%
   scale_x_continuous(limits = c(0, 1))
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on library strategy: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on library strategy: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S12.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_7.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
 
 #' 
 #+ FigS13
@@ -668,11 +705,11 @@ p <- mod %>%
   scale_x_continuous(limits = c(0, 1))
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on library selection: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on library selection: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S13.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_8.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
 
 #' 
 #+ FigS14
@@ -696,8 +733,8 @@ p <- mod %>%
   scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2))
 p$layers[[1]]$aes_params$size <- 1
 
-fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on library layout: *{deparse(f)}*, N = {summary(mod)$nobs}. Error bars, 95% HDI.")
+fig_cap <- glue("Modeling dependency of proportion of anti-conservative histograms on library layout: *{deparse(f)}*, N = {summary(mod)$nobs}. Points denote best fit of linear model. Error bars denote 95% credible interval.")
 
 #+ fig.cap=fig_cap
 p
-ggsave(here("figures/figure_S14.tiff"), height = 7, width = 10, dpi = 300, units = "cm")
+ggsave(here("figures/figure_3_figure_supplement_9.tiff"), height = 7, width = 10, dpi = 300, units = "cm")

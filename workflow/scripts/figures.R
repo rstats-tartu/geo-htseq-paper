@@ -257,6 +257,7 @@ p <- plot(conditional_effects(mod,
                               re_formula = NULL), 
           plot = FALSE)
 p3b <- p$`de_tool:cats__` + 
+  labs(y = "Proportion") +
   theme(axis.title.x = element_blank(), 
         legend.title = element_blank(),
         legend.position = "bottom")
@@ -270,9 +271,11 @@ ggsave(here("figures/figure_3.pdf"), plot = p3, width = 18, height = 12, units =
 f <- pi0 ~ de_tool
 family <- student()
 data <- pvalues_sample
+priors <- set_prior("normal(0, 0.5)", class="b")
 mod <- brm(formula = f, 
            data = data, 
-           family = family, 
+           family = family,
+           prior = priors,
            chains = chains, 
            cores = cores, 
            refresh = refresh,
@@ -283,7 +286,7 @@ p <- plot(conditional_effects(mod,
                               re_formula = NULL),
           plot = FALSE)
 p4b <- p$de_tool +
-  labs(y = expression(pi * 0)) +
+  labs(y = expression(pi[0])) +
   theme(axis.title.x = element_blank())
 p4b$layers[[1]]$aes_params$size <- 1
 
@@ -312,11 +315,11 @@ p4c <- p$year +
   facet_wrap(~ de_tool) +
   geom_smooth(color = "black") +
   scale_x_continuous(breaks = seq(2009, 2019, 2)) +
-  labs(y = expression(pi * 0))
+  labs(y = expression(pi[0]))
 p4c$layers[[1]]$aes_params$alpha <- 0.2
 
 p4a <- pvalues_sample %>% 
-  filter(Class == "anti-conservative") %>% 
+  filter(Class %in% c("anti-conservative", "uniform")) %>% 
   ggplot() + 
   geom_histogram(aes(pi0), color = "white", binwidth = 0.1) +
   labs(x = expression(pi * 0), y = "Count")
