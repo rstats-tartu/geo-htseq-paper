@@ -1,11 +1,19 @@
-localrules: all, staple
+localrules:
+    all,
+    staple,
+
 
 rule all:
     input:
         "results/figure_supplements.pdf",
         "results/main.pdf",
         expand("figures/figure_{n}.pdf", n=list(range(1, 5))),
-        expand("figures/figure_S{n}.tiff", n=list(range(1, 15))),
+        expand(
+            "figures/figure_{fig}_figure_supplement_{supp}.tiff",
+            zip,
+            fig=[2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4],
+            supp=[1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5],
+        ),
         "results/pall_et_al.pdf",
         "results/geo_suppfiles.csv",
         "results/imported_suppfiles.csv",
@@ -24,6 +32,18 @@ rule download:
         mem_mb=4000,
     shell:
         "curl -o {output} https://zenodo.org/record/4046422/files/geo-htseq-until-2019-12-31.tar.gz?download=1 2> {log}"
+
+
+rule download_simulation:
+    output:
+        "results/data/de_simulation_results.csv",
+    log:
+        "results/log/download.log",
+    resources:
+        runtime=120,
+        mem_mb=4000,
+    shell:
+        "curl -o {output} https://zenodo.org/record/4463804/files/de_simulation_results.csv?download=1 2> {log}"
 
 
 rule unpack:
@@ -121,8 +141,14 @@ rule figure_supplements:
         "results/pvalues.csv",
         "results/pvalues_sample.csv",
         "results/sequencing_metadata_unique_platform.csv",
+        "results/data/de_simulation_results.csv",
     output:
-        expand("figures/figure_S{n}.tiff", n=list(range(1, 15))),
+        expand(
+            "figures/figure_{fig}_figure_supplement_{supp}.tiff",
+            zip,
+            fig=[2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4],
+            supp=[1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5],
+        ),
         "results/figure_supplements.pdf", # "results/models/anticons_year.rds",
          # "results/models/anticons_year__year_detool.rds",
          # "results/models/anticons_year__year_model.rds",
@@ -184,7 +210,7 @@ rule staple:
     output:
         "results/pall_et_al.pdf",
     log:
-        "results/log/staple.log"
+        "results/log/staple.log",
     resources:
         runtime=120,
         mem_mb=4000,
@@ -208,7 +234,7 @@ rule suppl_data:
         "results/geo_publications.csv",
         "results/README.txt",
     log:
-        "results/log/suppl_data.log"
+        "results/log/suppl_data.log",
     conda:
         "envs/environment.yml"
     resources:

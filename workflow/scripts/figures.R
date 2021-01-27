@@ -63,8 +63,7 @@ p <- plot(conditional_effects(mod), plot = FALSE)$year
 p <- p + 
   geom_smooth(color = "black") +
   labs(x = "Year", y = "Proportion of submissions conforming\nwith GEO submission guidelines") +
-  scale_x_continuous(breaks = seq(2006, 2019, by = 2)) +
-  scale_y_continuous(limits = c(0, 1))
+  scale_x_continuous(breaks = seq(2006, 2019, by = 2))
 ggsave(here("figures/figure_1.pdf"), plot = p, height = 6, width = 7, dpi = 300, units = "cm")
 
 #' 
@@ -280,7 +279,7 @@ mod <- brm(formula = f,
            cores = cores, 
            refresh = refresh,
            iter = ifelse(is_ci(), 400, 2000),
-           file = here("results/models/pi0_detool.rds"))
+           file = here("results/models/pi0_detool_sample.rds"))
 p <- plot(conditional_effects(mod, 
                               effects = "de_tool",
                               re_formula = NULL),
